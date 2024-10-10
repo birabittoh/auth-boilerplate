@@ -2,15 +2,17 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"html/template"
 	"log"
 	"net/http"
+	"os"
 	"time"
 
-	"github.com/BiRabittoh/gauth/gauth"
+	"github.com/birabittoh/auth-boilerplate/auth"
+	"github.com/birabittoh/myks"
 	"github.com/glebarez/sqlite"
+	"github.com/joho/godotenv"
 	"gorm.io/gorm"
 )
 
@@ -22,23 +24,27 @@ type User struct {
 	Email         string
 	PasswordHash  string
 	RememberToken string
-	ResetToken    *string
-	ResetExpires  *time.Time
 }
 
 var (
-	db           *gorm.DB
+	db *gorm.DB
+	g  *auth.Auth
+
+	ks           = myks.New[uint](0)
 	durationDay  = 24 * time.Hour
 	durationWeek = 7 * durationDay
-	g            = gauth.NewGauth("superSecretPepper", durationDay, durationWeek)
 	templates    = template.Must(template.ParseGlob("templates/*.html"))
 )
 
 const userContextKey key = 0
 
 func main() {
+	err := godotenv.Load()
+	if err != nil {
+		log.Println("Error loading .env file")
+	}
+
 	// Connessione al database SQLite
-	var err error
 	db, err = gorm.Open(sqlite.Open("database.db"), &gorm.Config{})
 	if err != nil {
 		log.Fatal(err)
@@ -46,6 +52,9 @@ func main() {
 
 	// Creazione della tabella utenti
 	db.AutoMigrate(&User{})
+
+	// Inizializzazione di gauth
+	g = auth.NewAuth(os.Getenv("APP_PEPPER"))
 
 	// Gestione delle route
 	http.HandleFunc("GET /", loginRequired(examplePage))
@@ -147,13 +156,20 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cookie, err := g.GenerateCookie(remember == "on")
+	var duration time.Duration
+	if remember == "on" {
+		duration = durationWeek
+	} else {
+		duration = durationDay
+	}
+
+	cookie, err := g.GenerateCookie(duration)
 	if err != nil {
 		http.Error(w, "Errore nella generazione del token", http.StatusInternalServerError)
 	}
 
-	user.RememberToken = cookie.Value
-	db.Save(&user)
+	// user.RememberToken = cookie.Value
+	// db.Save(&user)
 
 	http.SetCookie(w, cookie)
 	http.Redirect(w, r, "/", http.StatusFound)
@@ -187,10 +203,7 @@ func postResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Imposta una scadenza di 1 ora per il reset token
-	expiration := time.Now().Add(1 * time.Hour)
-	user.ResetToken = &resetToken
-	user.ResetExpires = &expiration
-	db.Save(&user)
+	ks.Set(resetToken, user.ID, time.Hour)
 
 	// Simula l'invio di un'email con il link di reset (in questo caso viene stampato sul log)
 	resetURL := fmt.Sprintf("http://localhost:8080/reset-password-confirm?token=%s", resetToken)
@@ -201,26 +214,10 @@ func postResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func validateToken(r *http.Request) (user User, err error) {
-	token := r.URL.Query().Get("token")
-
-	db.Where("reset_token = ?", token).First(&user)
-
-	// Verifica se il token è valido e non scaduto
-	if user.ResetExpires == nil {
-		err = errors.New("nil value")
-		return
-	}
-
-	if user.ID == 0 || time.Now().After(*user.ResetExpires) {
-		err = errors.New("not found")
-	}
-	return
-}
-
 // Funzione per confermare il reset della password (usando il token)
 func getResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
-	_, err := validateToken(r)
+	token := r.URL.Query().Get("token")
+	_, err := ks.Get(token)
 	if err != nil {
 		http.Error(w, "Token non valido o scaduto", http.StatusUnauthorized)
 		return
@@ -230,11 +227,15 @@ func getResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func postResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
-	user, err := validateToken(r)
+	token := r.URL.Query().Get("token")
+	userID, err := ks.Get(token)
 	if err != nil {
 		http.Error(w, "Token non valido o scaduto", http.StatusUnauthorized)
 		return
 	}
+
+	var user User
+	db.First(&user, *userID)
 
 	password := r.FormValue("password")
 
@@ -247,9 +248,8 @@ func postResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Aggiorna l'utente con la nuova password e rimuove il token di reset
 	user.PasswordHash = hashedPassword
-	user.ResetToken = nil
-	user.ResetExpires = nil
 	db.Save(&user)
+	ks.Delete(token)
 
 	// Reindirizza alla pagina di login
 	http.Redirect(w, r, "/login", http.StatusFound)
