@@ -1,4 +1,4 @@
-package main
+package app
 
 import (
 	"context"
@@ -9,7 +9,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/birabittoh/auth-boilerplate/email"
+	"github.com/birabittoh/auth-boilerplate/src/email"
 )
 
 func login(w http.ResponseWriter, userID uint, remember bool) {
