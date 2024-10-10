@@ -1,12 +1,8 @@
 package main
 
 import (
-	"fmt"
-	"log"
 	"net/http"
 	"time"
-
-	"github.com/birabittoh/auth-boilerplate/email"
 )
 
 func examplePage(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +20,12 @@ func getRegisterHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getLoginHandler(w http.ResponseWriter, r *http.Request) {
-	templates.ExecuteTemplate(w, "login.html", nil)
+	_, err := readSessionCookie(r)
+	if err != nil {
+		templates.ExecuteTemplate(w, "login.html", nil)
+		return
+	}
+	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func getResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
@@ -48,7 +49,14 @@ func postRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		PasswordHash: hashedPassword,
 		Salt:         salt,
 	}
+
 	db.Create(&user)
+	if user.ID == 0 {
+		http.Error(w, "Username or email already exists.", http.StatusConflict)
+		return
+	}
+
+	login(w, user.ID, false)
 	http.Redirect(w, r, "/login", http.StatusFound)
 	return
 }
@@ -66,20 +74,7 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var duration time.Duration
-	if remember == "on" {
-		duration = durationWeek
-	} else {
-		duration = durationDay
-	}
-
-	cookie, err := g.GenerateCookie(duration)
-	if err != nil {
-		http.Error(w, "Could not generate session cookie.", http.StatusInternalServerError)
-	}
-
-	ks.Set(cookie.Value, user.ID, duration)
-	http.SetCookie(w, cookie)
+	login(w, user.ID, remember == "on")
 	http.Redirect(w, r, "/", http.StatusFound)
 	return
 }
@@ -107,17 +102,7 @@ func postResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ks.Set(resetToken, user.ID, time.Hour)
-	resetURL := fmt.Sprintf("http://localhost:8080/reset-password-confirm?token=%s", resetToken)
-
-	err = sendEmail(email.Email{
-		To:      []string{user.Email},
-		Subject: "Reset password",
-		Body:    fmt.Sprintf("Use this link to reset your password: %s", resetURL),
-	})
-
-	if err != nil {
-		log.Printf("Could not send reset email for %s. Link: %s", user.Email, resetURL)
-	}
+	sendResetEmail(user.Email, resetToken)
 
 	http.Redirect(w, r, "/login", http.StatusFound)
 	return

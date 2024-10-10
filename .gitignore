@@ -1,4 +1,5 @@
 .env
+data
 *.db
 __debug_bin*
 dist

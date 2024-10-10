@@ -1,12 +1,11 @@
 package main
 
 import (
-	"context"
-	"errors"
 	"html/template"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/birabittoh/auth-boilerplate/auth"
@@ -21,16 +20,24 @@ type key int
 
 type User struct {
 	gorm.Model
-	Username     string
-	Email        string
+	Username     string `gorm:"unique"`
+	Email        string `gorm:"unique"`
 	PasswordHash string
 	Salt         string
 }
+
+const (
+	dataDir = "data"
+	dbName  = "app.db"
+)
 
 var (
 	db *gorm.DB
 	g  *auth.Auth
 	m  *email.Client
+
+	baseUrl string
+	port    string
 
 	ks           = myks.New[uint](0)
 	durationDay  = 24 * time.Hour
@@ -40,51 +47,36 @@ var (
 
 const userContextKey key = 0
 
-func loadEmailConfig() *email.Client {
-	address := os.Getenv("APP_SMTP_EMAIL")
-	password := os.Getenv("APP_SMTP_PASSWORD")
-	host := os.Getenv("APP_SMTP_HOST")
-	port := os.Getenv("APP_SMTP_PORT")
-
-	if address == "" || password == "" || host == "" {
-		log.Println("Missing email configuration.")
-		return nil
-	}
-
-	if port == "" {
-		port = "587"
-	}
-
-	return email.NewClient(address, password, host, port)
-}
-
-func sendEmail(mail email.Email) error {
-	if m == nil {
-		return errors.New("email client is not initialized")
-	}
-	return m.Send(mail)
-}
-
 func main() {
 	err := godotenv.Load()
 	if err != nil {
 		log.Println("Error loading .env file")
 	}
 
-	// Connessione al database SQLite
-	db, err = gorm.Open(sqlite.Open("database.db"), &gorm.Config{})
+	port = os.Getenv("APP_PORT")
+	if port == "" {
+		port = "3000"
+	}
+
+	baseUrl = os.Getenv("APP_BASE_URL")
+	if baseUrl == "" {
+		baseUrl = "http://localhost:" + port
+	}
+
+	// Init auth and email
+	g = auth.NewAuth(os.Getenv("APP_PEPPER"))
+	m = loadEmailConfig()
+
+	os.MkdirAll(dataDir, os.ModePerm)
+	dbPath := filepath.Join(dataDir, dbName) + "?_pragma=foreign_keys(1)"
+	db, err = gorm.Open(sqlite.Open(dbPath), &gorm.Config{})
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	// Creazione della tabella utenti
 	db.AutoMigrate(&User{})
 
-	// Inizializzazione di gauth
-	g = auth.NewAuth(os.Getenv("APP_PEPPER"))
-	m = loadEmailConfig()
-
-	// Gestione delle route
+	// Handle routes
 	http.HandleFunc("GET /", loginRequired(examplePage))
 	http.HandleFunc("GET /register", getRegisterHandler)
 	http.HandleFunc("GET /login", getLoginHandler)
@@ -97,33 +89,8 @@ func main() {
 	http.HandleFunc("POST /reset-password", postResetPasswordHandler)
 	http.HandleFunc("POST /reset-password-confirm", postResetPasswordConfirmHandler)
 
-	port := ":8080"
-	log.Println("Server running on port " + port)
-	log.Fatal(http.ListenAndServe(port, nil))
-}
-
-// Middleware per controllare se l'utente è loggato.
-func loginRequired(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		cookie, err := r.Cookie("session_token")
-		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusFound)
-			return
-		}
-
-		userID, err := ks.Get(cookie.Value)
-		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusFound)
-			return
-		}
-
-		ctx := context.WithValue(r.Context(), userContextKey, *userID)
-		next(w, r.WithContext(ctx))
-	}
-}
-
-func getLoggedUser(r *http.Request) (user User, ok bool) {
-	userID, ok := r.Context().Value(userContextKey).(uint)
-	db.Find(&user, userID)
-	return user, ok
+	// Start serving
+	log.Println("Port: " + port)
+	log.Println("Server started: " + baseUrl)
+	log.Fatal(http.ListenAndServe(":"+port, nil))
 }
