@@ -89,6 +89,8 @@ func Main() {
 	http.HandleFunc("POST /reset-password", postResetPasswordHandler)
 	http.HandleFunc("POST /reset-password-confirm", postResetPasswordConfirmHandler)
 
+	http.Handle("GET /static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
 	// Start serving
 	log.Println("Port: " + port)
 	log.Println("Server started: " + baseUrl)

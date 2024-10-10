@@ -1,17 +1,33 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+
 <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
+    <link rel="stylesheet" href="https://cdn.simplecss.org/simple.min.css">
+    <link rel="stylesheet" href="/static/style.css">
 </head>
+
 <body>
     <h1>Login</h1>
     <form method="post" action="/login">
-        <label>Username: <input type="text" name="username" autocomplete="off"></label><br>
-        <label>Password: <input type="password" name="password"></label><br>
-        <label>Remember me: <input type="checkbox" name="remember"></label><br>
+        <label>
+            <span>Username:</span>
+            <input type="text" name="username" autocomplete="off">
+        </label>
+        <label>
+            <span>Password:</span>
+            <input type="password" name="password">
+        </label>
+        <label>
+            <span>Remember me:</span>
+            <input type="checkbox" name="remember">
+        </label>
         <input type="submit" value="Login">
     </form>
     <a href="/register">Sign up</a>
     <a href="/reset-password">Reset password</a>
 </body>
+
 </html>
