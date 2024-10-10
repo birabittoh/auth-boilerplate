@@ -26,6 +26,7 @@ FROM scratch AS build-release-stage
 
 WORKDIR /app
 
+COPY static ./static
 COPY templates ./templates
 COPY --from=builder /dist .
 

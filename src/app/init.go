@@ -71,8 +71,11 @@ func Main() {
 	}
 
 	// Init auth and email
-	g = auth.NewAuth(os.Getenv("APP_PEPPER"))
 	m = loadEmailConfig()
+	g = auth.NewAuth(os.Getenv("APP_PEPPER"), auth.DefaultMaxPasswordLength)
+	if g == nil {
+		log.Fatal("Could not init authentication.")
+	}
 
 	os.MkdirAll(dataDir, os.ModePerm)
 	dbPath := filepath.Join(dataDir, dbName) + "?_pragma=foreign_keys(1)"

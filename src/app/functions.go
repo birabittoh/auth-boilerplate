@@ -7,10 +7,42 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/birabittoh/auth-boilerplate/src/email"
 )
+
+const (
+	minUsernameLength = 3
+	maxUsernameLength = 10
+)
+
+var (
+	validUsername = regexp.MustCompile(`^[a-z0-9._-]+$`)
+	validEmail    = regexp.MustCompile(`^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$`)
+)
+
+func sanitizeUsername(username string) (string, error) {
+	username = strings.ToLower(username)
+
+	if !validUsername.MatchString(username) || len(username) < minUsernameLength || len(username) > maxUsernameLength {
+		return "", errors.New("invalid username")
+	}
+
+	return username, nil
+}
+
+func sanitizeEmail(email string) (string, error) {
+	email = strings.ToLower(email)
+
+	if !validEmail.MatchString(email) {
+		return "", fmt.Errorf("invalid email")
+	}
+
+	return email, nil
+}
 
 func login(w http.ResponseWriter, userID uint, remember bool) {
 	var duration time.Duration

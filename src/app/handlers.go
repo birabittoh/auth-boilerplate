@@ -38,13 +38,21 @@ func postRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	username := r.FormValue("username")
-	email := r.FormValue("email")
-	password := r.FormValue("password")
-
-	hashedPassword, salt, err := g.HashPassword(password)
+	username, err := sanitizeUsername(r.FormValue("username"))
 	if err != nil {
-		http.Error(w, "Could not hash your password.", http.StatusInternalServerError)
+		http.Error(w, "Invalid username.", http.StatusBadRequest)
+		return
+	}
+
+	email, err := sanitizeEmail(r.FormValue("email"))
+	if err != nil {
+		http.Error(w, "Invalid email.", http.StatusBadRequest)
+		return
+	}
+
+	hashedPassword, salt, err := g.HashPassword(r.FormValue("password"))
+	if err != nil {
+		http.Error(w, "Invalid password.", http.StatusBadRequest)
 		return
 	}
 
@@ -63,7 +71,6 @@ func postRegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	login(w, user.ID, false)
 	http.Redirect(w, r, "/login", http.StatusFound)
-	return
 }
 
 func postLoginHandler(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +88,6 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 
 	login(w, user.ID, remember == "on")
 	http.Redirect(w, r, "/", http.StatusFound)
-	return
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {
@@ -110,7 +116,6 @@ func postResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	sendResetEmail(user.Email, resetToken)
 
 	http.Redirect(w, r, "/login", http.StatusFound)
-	return
 
 }
 
@@ -140,7 +145,7 @@ func postResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 
 	hashedPassword, salt, err := g.HashPassword(password)
 	if err != nil {
-		http.Error(w, "Could not edit your password.", http.StatusInternalServerError)
+		http.Error(w, "Invalid password.", http.StatusBadRequest)
 		return
 	}
 
@@ -150,5 +155,4 @@ func postResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 	ks.Delete(token)
 
 	http.Redirect(w, r, "/login", http.StatusFound)
-	return
 }

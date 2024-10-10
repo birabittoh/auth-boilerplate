@@ -6,9 +6,11 @@ services:
     image: ghcr.io/birabittoh/auth-boilerplate:main
     container_name: app
     restart: unless-stopped
+    env_file: .env
     ports:
       - 3000:3000
-    volumes:
-      - /etc/localtime:/etc/localtime:ro
-      - ./templates:/app/templates
-      - ./data:/app/data
+#    volumes:
+#      - /etc/localtime:/etc/localtime:ro
+#      - ./templates:/app/templates
+#      - ./static:/app/static
+#      - ./data:/app/data
