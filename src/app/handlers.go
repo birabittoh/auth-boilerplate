@@ -33,6 +33,11 @@ func getResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func postRegisterHandler(w http.ResponseWriter, r *http.Request) {
+	if !registrationEnabled {
+		http.Error(w, "Registration is currently disabled.", http.StatusForbidden)
+		return
+	}
+
 	username := r.FormValue("username")
 	email := r.FormValue("email")
 	password := r.FormValue("password")

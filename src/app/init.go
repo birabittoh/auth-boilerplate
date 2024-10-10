@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/birabittoh/auth-boilerplate/src/auth"
@@ -36,8 +37,9 @@ var (
 	g  *auth.Auth
 	m  *email.Client
 
-	baseUrl string
-	port    string
+	baseUrl             string
+	port                string
+	registrationEnabled = true
 
 	ks           = myks.New[uint](0)
 	durationDay  = 24 * time.Hour
@@ -61,6 +63,11 @@ func Main() {
 	baseUrl = os.Getenv("APP_BASE_URL")
 	if baseUrl == "" {
 		baseUrl = "http://localhost:" + port
+	}
+
+	e := strings.ToLower(os.Getenv("APP_REGISTRATION_ENABLED"))
+	if e == "false" || e == "0" {
+		registrationEnabled = false
 	}
 
 	// Init auth and email
