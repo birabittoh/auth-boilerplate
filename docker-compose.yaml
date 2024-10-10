@@ -1,0 +1,14 @@
+name: app
+
+services:
+  app:
+    build: .
+    image: ghcr.io/birabittoh/auth-boilerplate:main
+    container_name: app
+    restart: unless-stopped
+    ports:
+      - 3000:3000
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - ./templates:/app/templates
+      - ./data:/app/data
