@@ -20,10 +20,10 @@ type key int
 
 type User struct {
 	gorm.Model
-	Username      string
-	Email         string
-	PasswordHash  string
-	RememberToken string
+	Username     string
+	Email        string
+	PasswordHash string
+	Salt         string
 }
 
 var (
@@ -84,21 +84,20 @@ func loginRequired(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		var user User
-		db.Where("remember_token = ?", cookie.Value).First(&user)
-
-		if user.ID == 0 {
+		userID, err := ks.Get(cookie.Value)
+		if err != nil {
 			http.Redirect(w, r, "/login", http.StatusFound)
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), userContextKey, user)
+		ctx := context.WithValue(r.Context(), userContextKey, *userID)
 		next(w, r.WithContext(ctx))
 	}
 }
 
-func getLoggedUser(r *http.Request) (User, bool) {
-	user, ok := r.Context().Value(userContextKey).(User)
+func getLoggedUser(r *http.Request) (user User, ok bool) {
+	userID, ok := r.Context().Value(userContextKey).(uint)
+	db.Find(&user, userID)
 	return user, ok
 }
 
@@ -130,13 +129,19 @@ func postRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	email := r.FormValue("email")
 	password := r.FormValue("password")
 
-	hashedPassword, err := g.HashPassword(password)
+	hashedPassword, salt, err := g.HashPassword(password)
 	if err != nil {
+		log.Printf("Error: %v", err)
 		http.Error(w, "Errore durante la registrazione", http.StatusInternalServerError)
 		return
 	}
 
-	user := User{Username: username, Email: email, PasswordHash: hashedPassword}
+	user := User{
+		Username:     username,
+		Email:        email,
+		PasswordHash: hashedPassword,
+		Salt:         salt,
+	}
 	db.Create(&user)
 	http.Redirect(w, r, "/login", http.StatusFound)
 	return
@@ -151,7 +156,7 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 	var user User
 	db.Where("username = ?", username).First(&user)
 
-	if user.ID == 0 || !g.CheckPassword(password, user.PasswordHash) {
+	if user.ID == 0 || !g.CheckPassword(password, user.Salt, user.PasswordHash) {
 		http.Error(w, "Credenziali non valide", http.StatusUnauthorized)
 		return
 	}
@@ -168,9 +173,7 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Errore nella generazione del token", http.StatusInternalServerError)
 	}
 
-	// user.RememberToken = cookie.Value
-	// db.Save(&user)
-
+	ks.Set(cookie.Value, user.ID, duration)
 	http.SetCookie(w, cookie)
 	http.Redirect(w, r, "/", http.StatusFound)
 	return
@@ -196,7 +199,7 @@ func postResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Genera un token di reset
-	resetToken, err := g.GenerateRandomToken()
+	resetToken, err := g.GenerateRandomToken(32)
 	if err != nil {
 		http.Error(w, "Errore nella generazione del token di reset", http.StatusInternalServerError)
 		return
@@ -240,7 +243,7 @@ func postResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 
 	// Hash della nuova password
-	hashedPassword, err := g.HashPassword(password)
+	hashedPassword, salt, err := g.HashPassword(password)
 	if err != nil {
 		http.Error(w, "Errore nella modifica della password", http.StatusInternalServerError)
 		return
@@ -248,6 +251,7 @@ func postResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Aggiorna l'utente con la nuova password e rimuove il token di reset
 	user.PasswordHash = hashedPassword
+	user.Salt = salt
 	db.Save(&user)
 	ks.Delete(token)
 

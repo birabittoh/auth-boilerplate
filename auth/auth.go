@@ -19,21 +19,26 @@ func NewAuth(pepper string) *Auth {
 	}
 }
 
-func (g Auth) HashPassword(password string) (string, error) {
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password+g.Pepper), bcrypt.DefaultCost)
+func (g Auth) HashPassword(password string) (hashedPassword, salt string, err error) {
+	salt, err = g.GenerateRandomToken(16)
 	if err != nil {
-		return "", err
+		return
 	}
-	return string(hashedPassword), nil
+
+	bytesPassword, err := bcrypt.GenerateFromPassword([]byte(password+salt+g.Pepper), bcrypt.DefaultCost)
+	if err != nil {
+		return
+	}
+	hashedPassword = string(bytesPassword)
+	return
 }
 
-func (g Auth) CheckPassword(password, hash string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(hash), []byte(password+g.Pepper))
-	return err == nil
+func (g Auth) CheckPassword(password, salt, hash string) bool {
+	return bcrypt.CompareHashAndPassword([]byte(hash), []byte(password+salt+g.Pepper)) == nil
 }
 
-func (g Auth) GenerateRandomToken() (string, error) {
-	token := make([]byte, 32)
+func (g Auth) GenerateRandomToken(n int) (string, error) {
+	token := make([]byte, n)
 	_, err := rand.Read(token)
 	if err != nil {
 		return "", err
@@ -42,7 +47,7 @@ func (g Auth) GenerateRandomToken() (string, error) {
 }
 
 func (g Auth) GenerateCookie(duration time.Duration) (*http.Cookie, error) {
-	sessionToken, err := g.GenerateRandomToken()
+	sessionToken, err := g.GenerateRandomToken(32)
 	if err != nil {
 		return nil, err
 	}
