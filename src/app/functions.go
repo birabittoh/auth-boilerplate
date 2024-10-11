@@ -91,7 +91,7 @@ func sendResetEmail(address, token string) {
 	err := sendEmail(email.Email{
 		To:      []string{address},
 		Subject: "Reset password",
-		Body:    fmt.Sprintf("Use this link to reset your password: %s", resetURL),
+		Body:    fmt.Sprintf("Use the following link to reset your password:\n%s", resetURL),
 	})
 	if err != nil {
 		log.Printf("Could not send reset email for %s. Link: %s", address, resetURL)

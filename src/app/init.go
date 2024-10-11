@@ -11,9 +11,9 @@ import (
 	"github.com/birabittoh/auth-boilerplate/src/auth"
 	"github.com/birabittoh/auth-boilerplate/src/email"
 	"github.com/birabittoh/myks"
-	"github.com/dannyvankooten/extemplate"
 	"github.com/glebarez/sqlite"
 	"github.com/joho/godotenv"
+	"github.com/utking/extemplate"
 	"gorm.io/gorm"
 )
 
