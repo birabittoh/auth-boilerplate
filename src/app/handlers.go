@@ -12,24 +12,24 @@ func examplePage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	templates.ExecuteTemplate(w, "example.html", map[string]interface{}{"User": user})
+	xt.ExecuteTemplate(w, "example.tmpl", map[string]interface{}{"User": user})
 }
 
 func getRegisterHandler(w http.ResponseWriter, r *http.Request) {
-	templates.ExecuteTemplate(w, "register.html", nil)
+	xt.ExecuteTemplate(w, "register.tmpl", nil)
 }
 
 func getLoginHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := readSessionCookie(r)
 	if err != nil {
-		templates.ExecuteTemplate(w, "login.html", nil)
+		xt.ExecuteTemplate(w, "login.tmpl", nil)
 		return
 	}
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func getResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	templates.ExecuteTemplate(w, "reset_password.html", nil)
+	xt.ExecuteTemplate(w, "reset_password.tmpl", nil)
 }
 
 func postRegisterHandler(w http.ResponseWriter, r *http.Request) {
@@ -127,7 +127,7 @@ func getResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	templates.ExecuteTemplate(w, "new_password.html", nil)
+	xt.ExecuteTemplate(w, "new_password.tmpl", nil)
 }
 
 func postResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {

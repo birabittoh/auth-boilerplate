@@ -1,7 +1,6 @@
 package app
 
 import (
-	"html/template"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +11,7 @@ import (
 	"github.com/birabittoh/auth-boilerplate/src/auth"
 	"github.com/birabittoh/auth-boilerplate/src/email"
 	"github.com/birabittoh/myks"
+	"github.com/dannyvankooten/extemplate"
 	"github.com/glebarez/sqlite"
 	"github.com/joho/godotenv"
 	"gorm.io/gorm"
@@ -36,6 +36,7 @@ var (
 	db *gorm.DB
 	g  *auth.Auth
 	m  *email.Client
+	xt *extemplate.Extemplate
 
 	baseUrl             string
 	port                string
@@ -44,7 +45,6 @@ var (
 	ks           = myks.New[uint](0)
 	durationDay  = 24 * time.Hour
 	durationWeek = 7 * durationDay
-	templates    = template.Must(template.ParseGlob("templates/*.html"))
 )
 
 const userContextKey key = 0
@@ -85,6 +85,13 @@ func Main() {
 	}
 
 	db.AutoMigrate(&User{})
+
+	// Init template engine
+	xt = extemplate.New()
+	err = xt.ParseDir("templates", []string{".tmpl"})
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Handle routes
 	http.HandleFunc("GET /", loginRequired(examplePage))

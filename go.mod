@@ -11,6 +11,7 @@ require (
 )
 
 require (
+	github.com/dannyvankooten/extemplate v0.0.0-20221206123735-ea3f2b2b17ac // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/glebarez/go-sqlite v1.21.2 // indirect
 	github.com/google/uuid v1.3.0 // indirect

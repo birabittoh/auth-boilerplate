@@ -1,0 +1,9 @@
+{{ extends "base.tmpl" }}
+
+{{define "title" -}}Protected page{{end}}
+
+{{define "content" -}}
+	<h1>Welcome, <i>{{.User.Username}}</i>!</h1> 
+    <p>This page is only accessible by users who have logged in.</p>
+    <a href="/logout">Logout</a>
+{{end}}
