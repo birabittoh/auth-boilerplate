@@ -1,19 +1,13 @@
-form {
-    width: 400px;
-}
-
 label {
-    display: flex;
-    flex-direction: row;
-    justify-content: flex-end;
+    display: grid;
+    grid-template-columns: auto auto;
+    align-items: center;
+    justify-items: start;
+    align-content: center;
+    justify-content: space-between;
+    max-width: 350px;
 }
 
 label > input {
-    flex: 0 0 200px;
-    margin-left: 20px;
+    max-width: 250px;
 }
-
-input[type=checkbox] {
-    flex: unset;
-}
-

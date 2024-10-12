@@ -1,0 +1,25 @@
+{{ extends "auth.tmpl" }}
+
+{{define "title" -}}Sign up{{end}}
+
+{{define "auth" -}}
+<h1>Sign up</h1>
+<form method="post" action="/register">
+    <label>
+        <span>Username:</span>
+        <input type="text" name="username" placeholder="[a-z0-9._-]" required />
+    </label>
+    <label>
+        <span>Email:</span>
+        <input type="email" name="email" placeholder="Email" required />
+    </label>
+    <label>
+        <span>Password:</span>
+        <input type="password" name="password" placeholder="Max 56 chars, ASCII only" required />
+    </label>
+    <input type="submit" value="Sign up" />
+</form>
+<a href="/login">Login</a><br />
+<a href="/reset-password">Reset password</a>
+</form>
+{{end}}

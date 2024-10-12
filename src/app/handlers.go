@@ -16,20 +16,20 @@ func examplePage(w http.ResponseWriter, r *http.Request) {
 }
 
 func getRegisterHandler(w http.ResponseWriter, r *http.Request) {
-	xt.ExecuteTemplate(w, "register.tmpl", nil)
+	xt.ExecuteTemplate(w, "auth-register.tmpl", nil)
 }
 
 func getLoginHandler(w http.ResponseWriter, r *http.Request) {
 	_, err := readSessionCookie(r)
 	if err != nil {
-		xt.ExecuteTemplate(w, "login.tmpl", nil)
+		xt.ExecuteTemplate(w, "auth-login.tmpl", nil)
 		return
 	}
 	http.Redirect(w, r, "/", http.StatusFound)
 }
 
 func getResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
-	xt.ExecuteTemplate(w, "reset_password.tmpl", nil)
+	xt.ExecuteTemplate(w, "auth-reset_password.tmpl", nil)
 }
 
 func postRegisterHandler(w http.ResponseWriter, r *http.Request) {
@@ -132,7 +132,7 @@ func getResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	xt.ExecuteTemplate(w, "new_password.tmpl", nil)
+	xt.ExecuteTemplate(w, "auth-new_password.tmpl", nil)
 }
 
 func postResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
