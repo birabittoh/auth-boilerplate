@@ -50,6 +50,12 @@ func postRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, err = getUserByName(username, 0)
+	if err == nil {
+		http.Error(w, "This username is already registered.", http.StatusConflict)
+		return
+	}
+
 	hashedPassword, salt, err := g.HashPassword(r.FormValue("password"))
 	if err != nil {
 		http.Error(w, "Invalid password.", http.StatusBadRequest)
@@ -65,7 +71,7 @@ func postRegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	db.Create(&user)
 	if user.ID == 0 {
-		http.Error(w, "Username or email already exists.", http.StatusConflict)
+		http.Error(w, "This email is already registered.", http.StatusConflict)
 		return
 	}
 
@@ -78,10 +84,9 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 	password := r.FormValue("password")
 	remember := r.FormValue("remember")
 
-	var user User
-	db.Where("username = ?", username).First(&user)
+	user, err := getUserByName(username, 0)
 
-	if user.ID == 0 || !g.CheckPassword(password, user.Salt, user.PasswordHash) {
+	if err != nil || !g.CheckPassword(password, user.Salt, user.PasswordHash) {
 		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
@@ -112,7 +117,7 @@ func postResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ks.Set(resetToken, user.ID, time.Hour)
+	ks.Set("reset:"+resetToken, user.ID, time.Hour)
 	sendResetEmail(user.Email, resetToken)
 
 	http.Redirect(w, r, "/login", http.StatusFound)
@@ -121,7 +126,7 @@ func postResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 
 func getResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
-	_, err := ks.Get(token)
+	_, err := ks.Get("reset:" + token)
 	if err != nil {
 		http.Error(w, "Token is invalid or expired.", http.StatusUnauthorized)
 		return
@@ -132,7 +137,7 @@ func getResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 
 func postResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
-	userID, err := ks.Get(token)
+	userID, err := ks.Get("reset:" + token)
 	if err != nil {
 		http.Error(w, "Token is invalid or expired.", http.StatusUnauthorized)
 		return

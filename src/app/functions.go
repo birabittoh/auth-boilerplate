@@ -20,13 +20,16 @@ const (
 )
 
 var (
-	validUsername = regexp.MustCompile(`^[a-z0-9._-]+$`)
+	validUsername = regexp.MustCompile(`(?i)^[a-z0-9._-]+$`)
 	validEmail    = regexp.MustCompile(`^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$`)
 )
 
-func sanitizeUsername(username string) (string, error) {
-	username = strings.ToLower(username)
+func getUserByName(username string, excluding uint) (user User, err error) {
+	err = db.Model(&User{}).Where("upper(username) == upper(?) AND id != ?", username, excluding).First(&user).Error
+	return
+}
 
+func sanitizeUsername(username string) (string, error) {
 	if !validUsername.MatchString(username) || len(username) < minUsernameLength || len(username) > maxUsernameLength {
 		return "", errors.New("invalid username")
 	}
@@ -57,7 +60,7 @@ func login(w http.ResponseWriter, userID uint, remember bool) {
 		http.Error(w, "Could not generate session cookie.", http.StatusInternalServerError)
 	}
 
-	ks.Set(cookie.Value, userID, duration)
+	ks.Set("session:"+cookie.Value, userID, duration)
 	http.SetCookie(w, cookie)
 }
 
@@ -103,7 +106,7 @@ func readSessionCookie(r *http.Request) (userID *uint, err error) {
 	if err != nil {
 		return
 	}
-	return ks.Get(cookie.Value)
+	return ks.Get("session:" + cookie.Value)
 }
 
 // Middleware to check if the user is logged in
