@@ -5,14 +5,18 @@ import (
 	"time"
 )
 
-func examplePage(w http.ResponseWriter, r *http.Request) {
+func getIndexHandler(w http.ResponseWriter, r *http.Request) {
+	xt.ExecuteTemplate(w, "index.tmpl", nil)
+}
+
+func getProfileHandler(w http.ResponseWriter, r *http.Request) {
 	user, ok := getLoggedUser(r)
 	if !ok {
 		http.Error(w, "Could not find user in context.", http.StatusInternalServerError)
 		return
 	}
 
-	xt.ExecuteTemplate(w, "example.tmpl", map[string]interface{}{"User": user})
+	xt.ExecuteTemplate(w, "profile.tmpl", map[string]interface{}{"User": user})
 }
 
 func getRegisterHandler(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +29,7 @@ func getLoginHandler(w http.ResponseWriter, r *http.Request) {
 		xt.ExecuteTemplate(w, "auth-login.tmpl", nil)
 		return
 	}
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, "/profile", http.StatusFound)
 }
 
 func getResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
@@ -92,7 +96,7 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	login(w, user.ID, remember == "on")
-	http.Redirect(w, r, "/", http.StatusFound)
+	http.Redirect(w, r, "/login", http.StatusFound)
 }
 
 func logoutHandler(w http.ResponseWriter, r *http.Request) {

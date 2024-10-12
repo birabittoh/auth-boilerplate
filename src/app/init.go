@@ -94,7 +94,8 @@ func Main() {
 	}
 
 	// Handle routes
-	http.HandleFunc("GET /", loginRequired(examplePage))
+	http.HandleFunc("GET /", getIndexHandler)
+	http.HandleFunc("GET /profile", loginRequired(getProfileHandler))
 	http.HandleFunc("GET /register", getRegisterHandler)
 	http.HandleFunc("GET /login", getLoginHandler)
 	http.HandleFunc("GET /reset-password", getResetPasswordHandler)
