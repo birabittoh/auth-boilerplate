@@ -60,6 +60,12 @@ func postRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	_, err = getUserByEmail(email, 0)
+	if err == nil {
+		showError(w, "This email is already registered.", http.StatusConflict)
+		return
+	}
+
 	hashedPassword, salt, err := g.HashPassword(r.FormValue("password"))
 	if err != nil {
 		showError(w, "Invalid password.", http.StatusBadRequest)
@@ -73,9 +79,9 @@ func postRegisterHandler(w http.ResponseWriter, r *http.Request) {
 		Salt:         salt,
 	}
 
-	db.Create(&user)
-	if user.ID == 0 {
-		showError(w, "This email is already registered.", http.StatusConflict)
+	err = db.Create(&user).Error
+	if err != nil {
+		showError(w, "Could not create user.", http.StatusInternalServerError)
 		return
 	}
 
@@ -91,7 +97,7 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := getUserByName(username, 0)
 
 	if err != nil || !g.CheckPassword(password, user.Salt, user.PasswordHash) {
-		showError(w, "Invalid credentials", http.StatusUnauthorized)
+		showError(w, "Invalid credentials.", http.StatusUnauthorized)
 		return
 	}
 
@@ -108,9 +114,8 @@ func postResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 	emailInput := r.FormValue("email")
 
 	var user User
-	db.Where("email = ?", emailInput).First(&user)
-
-	if user.ID == 0 {
+	err := db.Where("email = ?", emailInput).First(&user).Error
+	if err != nil {
 		http.Redirect(w, r, "/login", http.StatusFound)
 		return
 	}
@@ -148,7 +153,10 @@ func postResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var user User
-	db.First(&user, *userID)
+	err = db.First(&user, *userID).Error
+	if err != nil {
+		showError(w, "Could not get user.", http.StatusInternalServerError)
+	}
 
 	password := r.FormValue("password")
 
@@ -160,7 +168,10 @@ func postResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 
 	user.PasswordHash = hashedPassword
 	user.Salt = salt
-	db.Save(&user)
+	err = db.Save(&user).Error
+	if err != nil {
+		showError(w, "Could not save user.", http.StatusInternalServerError)
+	}
 	ks.Delete(token)
 
 	http.Redirect(w, r, "/login", http.StatusFound)

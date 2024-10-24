@@ -34,6 +34,11 @@ func getUserByName(username string, excluding uint) (user User, err error) {
 	return
 }
 
+func getUserByEmail(email string, excluding uint) (user User, err error) {
+	err = db.Model(&User{}).Where("upper(email) == upper(?) AND id != ?", email, excluding).First(&user).Error
+	return
+}
+
 func sanitizeUsername(username string) (string, error) {
 	if !validUsername.MatchString(username) || len(username) < minUsernameLength || len(username) > maxUsernameLength {
 		return "", errors.New("invalid username")
