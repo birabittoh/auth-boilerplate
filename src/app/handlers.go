@@ -12,7 +12,7 @@ func getIndexHandler(w http.ResponseWriter, r *http.Request) {
 func getProfileHandler(w http.ResponseWriter, r *http.Request) {
 	user, ok := getLoggedUser(r)
 	if !ok {
-		http.Error(w, "Could not find user in context.", http.StatusInternalServerError)
+		showError(w, "Could not find user in context.", http.StatusInternalServerError)
 		return
 	}
 
@@ -38,31 +38,31 @@ func getResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 
 func postRegisterHandler(w http.ResponseWriter, r *http.Request) {
 	if !registrationEnabled {
-		http.Error(w, "Registration is currently disabled.", http.StatusForbidden)
+		showError(w, "Registration is currently disabled.", http.StatusForbidden)
 		return
 	}
 
 	username, err := sanitizeUsername(r.FormValue("username"))
 	if err != nil {
-		http.Error(w, "Invalid username.", http.StatusBadRequest)
+		showError(w, "Invalid username.", http.StatusBadRequest)
 		return
 	}
 
 	email, err := sanitizeEmail(r.FormValue("email"))
 	if err != nil {
-		http.Error(w, "Invalid email.", http.StatusBadRequest)
+		showError(w, "Invalid email.", http.StatusBadRequest)
 		return
 	}
 
 	_, err = getUserByName(username, 0)
 	if err == nil {
-		http.Error(w, "This username is already registered.", http.StatusConflict)
+		showError(w, "This username is already registered.", http.StatusConflict)
 		return
 	}
 
 	hashedPassword, salt, err := g.HashPassword(r.FormValue("password"))
 	if err != nil {
-		http.Error(w, "Invalid password.", http.StatusBadRequest)
+		showError(w, "Invalid password.", http.StatusBadRequest)
 		return
 	}
 
@@ -75,7 +75,7 @@ func postRegisterHandler(w http.ResponseWriter, r *http.Request) {
 
 	db.Create(&user)
 	if user.ID == 0 {
-		http.Error(w, "This email is already registered.", http.StatusConflict)
+		showError(w, "This email is already registered.", http.StatusConflict)
 		return
 	}
 
@@ -91,7 +91,7 @@ func postLoginHandler(w http.ResponseWriter, r *http.Request) {
 	user, err := getUserByName(username, 0)
 
 	if err != nil || !g.CheckPassword(password, user.Salt, user.PasswordHash) {
-		http.Error(w, "Invalid credentials", http.StatusUnauthorized)
+		showError(w, "Invalid credentials", http.StatusUnauthorized)
 		return
 	}
 
@@ -117,7 +117,7 @@ func postResetPasswordHandler(w http.ResponseWriter, r *http.Request) {
 
 	resetToken, err := g.GenerateRandomToken(32)
 	if err != nil {
-		http.Error(w, "Could not generate reset token.", http.StatusInternalServerError)
+		showError(w, "Could not generate reset token.", http.StatusInternalServerError)
 		return
 	}
 
@@ -132,7 +132,7 @@ func getResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 	_, err := ks.Get("reset:" + token)
 	if err != nil {
-		http.Error(w, "Token is invalid or expired.", http.StatusUnauthorized)
+		showError(w, "Token is invalid or expired.", http.StatusUnauthorized)
 		return
 	}
 
@@ -143,7 +143,7 @@ func postResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 	token := r.URL.Query().Get("token")
 	userID, err := ks.Get("reset:" + token)
 	if err != nil {
-		http.Error(w, "Token is invalid or expired.", http.StatusUnauthorized)
+		showError(w, "Token is invalid or expired.", http.StatusUnauthorized)
 		return
 	}
 
@@ -154,7 +154,7 @@ func postResetPasswordConfirmHandler(w http.ResponseWriter, r *http.Request) {
 
 	hashedPassword, salt, err := g.HashPassword(password)
 	if err != nil {
-		http.Error(w, "Invalid password.", http.StatusBadRequest)
+		showError(w, "Invalid password.", http.StatusBadRequest)
 		return
 	}
 

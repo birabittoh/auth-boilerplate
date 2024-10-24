@@ -24,6 +24,11 @@ var (
 	validEmail    = regexp.MustCompile(`^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$`)
 )
 
+func showError(w http.ResponseWriter, text string, status int) {
+	w.WriteHeader(status)
+	xt.ExecuteTemplate(w, "error.tmpl", map[string]interface{}{"Status": status, "Text": text})
+}
+
 func getUserByName(username string, excluding uint) (user User, err error) {
 	err = db.Model(&User{}).Where("upper(username) == upper(?) AND id != ?", username, excluding).First(&user).Error
 	return
@@ -57,7 +62,7 @@ func login(w http.ResponseWriter, userID uint, remember bool) {
 
 	cookie, err := g.GenerateCookie(duration)
 	if err != nil {
-		http.Error(w, "Could not generate session cookie.", http.StatusInternalServerError)
+		showError(w, "Could not generate session cookie.", http.StatusInternalServerError)
 	}
 
 	ks.Set("session:"+cookie.Value, userID, duration)
